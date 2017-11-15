@@ -10,23 +10,12 @@ Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40);
 #define SERVOMIN 150
 #define SERVOMAX 600
 
-const char* ssid = "ASUS";
-const char* password = "";
+const char* ssid = "robotic-lab-3";
+const char* password = "deepblue69";
 
 WiFiServer server(80);
-/*
-void straight(){
-  pwm1.setPWM(11, 0, 160);
-  pwm1.setPWM(10, 0, 120);
-  pwm1.setPWM(9, 0, 140);
-  pwm1.setPWM(8, 0, 260);
-   
-  pwm.setPWM(11, 0, 140);//140
-  pwm.setPWM(10, 0, 120);//120
-  pwm.setPWM(9, 0, 280);//260/500/
-  pwm.setPWM(8, 0, 180);//180
-}
-*/
+WiFiClient client;
+
 void setup() {
   Serial.begin(115200);
   delay(10);
@@ -70,7 +59,7 @@ void setup() {
   pwm1.begin();
   pwm1.setPWMFreq(60);
   yield();
-  spine();
+  sit();
 }
 
 void  setServoPulse(uint8_t n, double pulse)
@@ -90,6 +79,8 @@ int   down = 0;
 int   right_wave = 0;
 int   left_wave = 0;
 int   raand = 0;
+int up = 0;
+
 void loop() {
   LED();
   // Check if a client has connected
@@ -99,42 +90,66 @@ void loop() {
   }
   
   // Wait until the client sends some data
-  Serial.println("new client");
   while(!client.available()){
     delay(1);
   }
+  Serial.println("new client");
   
   // Read the first line of the request
   String req = client.readStringUntil('\r');
   Serial.println(req);
-  client.flush();
+  //client.flush();
   
   // Match the request
   String val;
-  if (req.indexOf("/hands_up") != -1){
-    hands_up();
+  if (req.indexOf("/nod") != -1){
+    nod();
+    val = "Nodding Head";
+  }
+  else if (req.indexOf("/center") != -1){
+    sit();
+    val = "Center";
+  }
+  else if (req.indexOf("/hands_up") != -1){
+    hands_up(&down, &up, &right_wave, &left_wave);
     val = "Hands Are Up";
   }
+  else if (req.indexOf("/look_right") != -1){
+    twist_left();
+    val = "Looking Left";
+  }
+  else if (req.indexOf("/look_left") != -1){
+    twist_right();
+    val = "Looking Right";
+  }
   else if (req.indexOf("/hands_down") != -1){
-    hands_down(&down);
-    val = "Hads Are Down";
+    Serial.println(left_wave);
+    hands_down(&down, up, right_wave, left_wave);
+    val = "Hands Are Down";
     raand = 0;
   }
   else if(req.indexOf("/wave_left") != -1){
-    wave_left_hand(&right_wave);
+    wave_left_hand(&left_wave);
     val = "Left Hand Waving";
     raand = 0;
   }
-  else if (req.indexOf("/neck") != -1){
-    val = "Neck Test";
-    neck();
+  else if (req.indexOf("/wave_right") != -1){
+    wave_right_hand(&right_wave);
+    val = "Right Hands Waving";
+    raand = 0;
   }
-  else if (raand == 5000){
+  else{
     Serial.println("invalid request");
     client.stop();
     return;
   }
-  client.flush();
+
+  if (req.indexOf("/wave_right") != -1){
+    wave_right_hand(&right_wave);
+    val = "Right Hands Waving";
+    raand = 0;
+  }
+  //client.flush();
 
   // Prepare the response
   String s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\n ";
@@ -143,14 +158,12 @@ void loop() {
 
   // Send the response to the client
   client.print(s);
+  client.stop();
   delay(1);
   Serial.println("Client disonnected");
   
   // The client will actually be disconnected 
   // when the function returns and 'client' object is detroyed
-  /*raand++;
-  if (raand > 500000){
-    idle();
-  }*/
+  
 }
 
